@@ -1,8 +1,14 @@
-"""Navegación principal de la aplicación.
-Cada vista consulta Neo4j con las consultas de cypher/consultas.cypher:
-  feed / new_article / article_detail → artículos, comentarios, etiquetas y categorías
-  users                               → usuarios
-  categories / tags                   → categorías y etiquetas
+"""Punto de entrada de la interfaz gráfica.
+
+Arranque:
+  python main_gui.py
+    → main()
+    → BlogAdminApp()   (arma ventana, menú y área de contenido)
+    → _show_feed()     (primera pantalla)
+    → mainloop()       (queda esperando clics)
+
+Navegación: cada ítem del menú limpia self.content y monta una vista.
+Las vistas hablan con Neo4j solo a través de db.py.
 """
 
 import customtkinter as ctk
@@ -14,10 +20,12 @@ from views.users import UsersView
 from views.taxonomy import CategoriesView, TagsView
 from views.new_article import abrir_form_publicar_articulo
 
+# Tema oscuro de CustomTkinter (colores concretos están en theme.py)
 ctk.set_appearance_mode("dark")
 
 
 class BlogAdminApp(ctk.CTk):
+    """Ventana principal: barra superior + sidebar + zona de contenido."""
 
     def __init__(self):
         super().__init__()
@@ -26,12 +34,13 @@ class BlogAdminApp(ctk.CTk):
         self.minsize(820, 560)
         self.configure(fg_color=theme.CONTENT_BG)
 
-        self._nav_buttons = {}
-        self._active_page = None
+        self._nav_buttons = {}       # botones del menú, para marcar el activo
+        self._active_page = None     # clave de la página actual ("feed", "users", ...)
         self._sidebar_visible = True
 
         self._build_top_bar()
 
+        # Contenedor: columna 0 = sidebar, columna 1 = contenido
         self.main_container = ctk.CTkFrame(self, fg_color=theme.CONTENT_BG)
         self.main_container.pack(fill="both", expand=True)
         self.main_container.grid_columnconfigure(1, weight=1)
@@ -39,9 +48,12 @@ class BlogAdminApp(ctk.CTk):
 
         self._build_sidebar(self.main_container)
         self._build_content_area(self.main_container)
+
+        # Tras 100 ms abre el feed (da tiempo a que la ventana termine de dibujarse)
         self.after(100, self._show_feed)
 
     def _build_top_bar(self):
+        """Barra superior con el botón ☰ para mostrar/ocultar el menú."""
         top_bar = ctk.CTkFrame(self, fg_color=theme.CONTENT_BG, height=50, corner_radius=0)
         top_bar.pack(fill="x")
 
@@ -59,12 +71,14 @@ class BlogAdminApp(ctk.CTk):
         ).pack(side="left", padx=5)
 
     def _build_sidebar(self, parent):
+        """Menú lateral: pantallas + acción de publicar."""
         self.sidebar = ctk.CTkFrame(parent, fg_color=theme.SIDEBAR_BG, width=240, corner_radius=0)
         self.sidebar.grid_propagate(False)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
 
         ctk.CTkFrame(self.sidebar, fg_color="transparent", height=20).pack(fill="x")
 
+        # Cada tupla: (clave_interna, texto_visible, función_a_llamar)
         nav_items = [
             ("feed", "Inicio", self._show_feed),
             ("users", "Usuarios", self._show_users),
@@ -73,15 +87,21 @@ class BlogAdminApp(ctk.CTk):
         ]
 
         for clave, texto, comando in nav_items:
-            self._nav_buttons[clave] = self._make_nav_button(self.sidebar, texto, comando, page_key=clave)
+            self._nav_buttons[clave] = self._make_nav_button(
+                self.sidebar, texto, comando, page_key=clave
+            )
 
-        ctk.CTkFrame(self.sidebar, fg_color=theme.SIDEBAR_DIVIDER, height=1).pack(fill="x", pady=15, padx=20)
+        ctk.CTkFrame(self.sidebar, fg_color=theme.SIDEBAR_DIVIDER, height=1).pack(
+            fill="x", pady=15, padx=20
+        )
 
         ctk.CTkLabel(
-            self.sidebar, text="ACCIONES", font=ctk.CTkFont(family="Helvetica", size=11, weight="bold"),
+            self.sidebar, text="ACCIONES",
+            font=ctk.CTkFont(family="Helvetica", size=11, weight="bold"),
             text_color=theme.SIDEBAR_MUTED, anchor="w"
         ).pack(fill="x", padx=20, pady=(0, 10))
 
+        # Abre ventana modal de publicación; al guardar vuelve al feed
         action_btn = ctk.CTkButton(
             self.sidebar, text="+ Publicar artículo", fg_color=theme.SIDEBAR_SELECTED_TEXT,
             text_color="#131314", hover_color="#8AB4F8", corner_radius=8,
@@ -91,6 +111,7 @@ class BlogAdminApp(ctk.CTk):
         action_btn.pack(fill="x", padx=15, pady=5)
 
     def _toggle_sidebar(self):
+        """Muestra u oculta la barra lateral."""
         if self._sidebar_visible:
             self.sidebar.grid_remove()
             self._sidebar_visible = False
@@ -99,6 +120,7 @@ class BlogAdminApp(ctk.CTk):
             self._sidebar_visible = True
 
     def _make_nav_button(self, parent, texto, comando, page_key=None):
+        """Crea un botón del menú con estilo inactivo por defecto."""
         btn = ctk.CTkButton(
             parent, text=texto, anchor="w", fg_color="transparent",
             text_color=theme.SIDEBAR_TEXT, hover_color=theme.SIDEBAR_HOVER_BG,
@@ -108,6 +130,7 @@ class BlogAdminApp(ctk.CTk):
         return btn
 
     def _set_active_nav(self, page_key):
+        """Resalta el botón de la página actual y apaga los demás."""
         self._active_page = page_key
         for clave, btn in self._nav_buttons.items():
             if clave == page_key:
@@ -124,45 +147,60 @@ class BlogAdminApp(ctk.CTk):
                 )
 
     def _build_content_area(self, parent):
+        """Marco vacío donde se montan FeedView, UsersView, etc."""
         self.content = ctk.CTkFrame(parent, fg_color=theme.CONTENT_BG, corner_radius=0)
         self.content.grid(row=0, column=1, sticky="nsew")
 
     def _clear_content(self):
+        """Destruye la vista anterior antes de mostrar otra (evita pantallas apiladas)."""
         for widget in self.content.winfo_children():
             widget.destroy()
 
+    # ── Pantallas ──────────────────────────────────────────────
+
     def _show_feed(self):
+        """Inicio: listado de artículos. Al hacer clic en uno abre el detalle."""
         self._clear_content()
         self._set_active_nav("feed")
-        FeedView(self.content, on_open_article=self._show_article_detail).pack(fill="both", expand=True)
+        FeedView(self.content, on_open_article=self._show_article_detail).pack(
+            fill="both", expand=True
+        )
 
     def _show_users(self):
+        """Listar y registrar usuarios."""
         self._clear_content()
         self._set_active_nav("users")
         UsersView(self.content).pack(fill="both", expand=True)
 
     def _show_categories(self):
+        """CRUD de categorías."""
         self._clear_content()
         self._set_active_nav("categories")
         CategoriesView(self.content).pack(fill="both", expand=True)
 
     def _show_tags(self):
+        """CRUD de etiquetas."""
         self._clear_content()
         self._set_active_nav("tags")
         TagsView(self.content).pack(fill="both", expand=True)
 
     def _show_article_detail(self, article):
+        """Detalle de un artículo (texto, editar/borrar, comentarios)."""
         self._clear_content()
         self._set_active_nav(None)
-        ArticleDetailView(self.content, article, on_back=self._show_feed).pack(fill="both", expand=True)
+        ArticleDetailView(self.content, article, on_back=self._show_feed).pack(
+            fill="both", expand=True
+        )
 
 
 def main():
+    """Crea la ventana, la trae al frente y entra al bucle de eventos de Tk."""
     app = BlogAdminApp()
     app.after(50, app.lift)
     app.after(50, app.focus_force)
-    app.mainloop()
+    app.mainloop()  # aquí se queda el programa hasta cerrar la ventana
 
 
 if __name__ == "__main__":
+    # Solo se ejecuta al correr este archivo directamente (no al importarlo)
     main()

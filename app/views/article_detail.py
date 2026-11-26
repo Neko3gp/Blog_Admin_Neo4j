@@ -1,7 +1,11 @@
-"""Detalle de artículo + comentarios.
-  Artículo: editar (new_article.py) y eliminar (consulta `articulo_eliminar`, borra también sus comentarios)
-  Comentarios: consultas comentarios_listar / comentario_crear / comentario_actualizar / comentario_eliminar
-  No usar self._root (sombra el método de Tkinter).
+"""Detalle de un artículo: texto, editar/eliminar y comentarios.
+
+Consultas usadas:
+  comentarios_listar / comentario_crear / comentario_actualizar / comentario_eliminar
+  articulo_eliminar  (también borra los Comment ligados)
+
+Editar el artículo abre new_article.py en modo edición.
+No usar self._root: en Tkinter ese nombre choca con un método interno.
 """
 
 import tkinter as tk
@@ -15,17 +19,23 @@ from widgets.combo import make_combo
 
 
 class ArticleDetailView(ctk.CTkFrame):
+    """Pantalla completa del artículo seleccionado desde el feed."""
+
     def __init__(self, parent, article, on_back, on_article_changed=None):
         super().__init__(parent, fg_color=theme.PAGE_BG)
-        self.article = dict(article)  # el feed ya trae título, texto, autor, etiquetas, etc.
-        self.on_back = on_back
+        # Copia del dict que trajo articulos_listar (título, texto, autor, tags, ...)
+        self.article = dict(article)
+        self.on_back = on_back  # normalmente main_gui._show_feed
+        # Tras editar, por defecto también vuelve al feed
         self.on_article_changed = on_article_changed or on_back
+        # Ventana raíz (para diálogos modales)
         self._toplevel = self.winfo_toplevel()
 
         self._build_header()
         self._build_body_and_comments()
 
     def _build_header(self):
+        """Botones Volver / Editar / Eliminar + título y meta del artículo."""
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", padx=20, pady=(16, 4))
 
@@ -65,6 +75,7 @@ class ArticleDetailView(ctk.CTkFrame):
         ).pack(fill="x", pady=(2, 0))
 
     def _build_body_and_comments(self):
+        """Cuerpo del artículo + lista de comentarios + formulario para comentar."""
         self.scroll = ctk.CTkScrollableFrame(
             self, fg_color="transparent",
             scrollbar_button_color=theme.SCROLLBAR_FG,
@@ -72,6 +83,7 @@ class ArticleDetailView(ctk.CTkFrame):
         )
         self.scroll.pack(fill="both", expand=True, padx=15, pady=(5, 15))
 
+        # Texto completo del artículo
         texto = self.article.get("text")
         ctk.CTkLabel(
             self.scroll,
@@ -81,6 +93,7 @@ class ArticleDetailView(ctk.CTkFrame):
             anchor="w", justify="left", wraplength=700
         ).pack(fill="x", padx=5, pady=(10, 20))
 
+        # Separador visual
         ctk.CTkFrame(self.scroll, fg_color=theme.CARD_BORDER, height=1).pack(
             fill="x", padx=5, pady=(0, 20)
         )
@@ -91,6 +104,7 @@ class ArticleDetailView(ctk.CTkFrame):
             text_color=theme.PAGE_FG, anchor="w"
         ).pack(fill="x", padx=5, pady=(0, 15))
 
+        # Contenedor que _render_comments vacía y vuelve a llenar
         self.comments_container = ctk.CTkFrame(self.scroll, fg_color="transparent")
         self.comments_container.pack(fill="x", padx=5)
         self._render_comments()
@@ -101,6 +115,7 @@ class ArticleDetailView(ctk.CTkFrame):
         self._build_comment_form(self.scroll)
 
     def _editar_articulo(self):
+        """Abre el mismo formulario de publicación, precargado con este artículo."""
         abrir_form_editar_articulo(
             self._toplevel,
             self.article,
@@ -108,6 +123,7 @@ class ArticleDetailView(ctk.CTkFrame):
         )
 
     def _eliminar_articulo(self):
+        """Borra el nodo Article y sus Comment (consulta articulo_eliminar)."""
         titulo = self.article.get("title", "")
         confirm = messagebox.askyesno(
             "Confirmar",
@@ -125,6 +141,7 @@ class ArticleDetailView(ctk.CTkFrame):
         self.on_back()
 
     def _render_comments(self):
+        """Lee comentarios del artículo y dibuja cada uno con botones editar/borrar."""
         for widget in self.comments_container.winfo_children():
             widget.destroy()
 
@@ -157,6 +174,7 @@ class ArticleDetailView(ctk.CTkFrame):
                 text_color=theme.TEXT_MUTED, anchor="w"
             ).pack(side="left", fill="x", expand=True)
 
+            # lambda c=comentario captura el valor de ESTE ciclo (evita bug de closure)
             ctk.CTkButton(
                 top, text="✖", width=28, height=24,
                 fg_color="#dc3545", hover_color="#c82333",
@@ -175,11 +193,12 @@ class ArticleDetailView(ctk.CTkFrame):
             ).pack(fill="x", padx=15, pady=(0, 10))
 
     def _editar_comentario(self, comentario):
+        """Diálogo modal para cambiar el content del comentario."""
         dialog = ctk.CTkToplevel(self)
         dialog.title("Editar comentario")
         dialog.geometry("420x220")
         dialog.transient(self._toplevel)
-        dialog.grab_set()
+        dialog.grab_set()   # bloquea la ventana principal mientras el diálogo está abierto
         dialog.focus_force()
 
         ctk.CTkLabel(dialog, text="Nuevo contenido:", anchor="w").pack(
@@ -205,6 +224,7 @@ class ArticleDetailView(ctk.CTkFrame):
         ctk.CTkButton(dialog, text="Guardar", command=guardar).pack(pady=(0, 16))
 
     def _eliminar_comentario(self, comentario):
+        """Borra un solo nodo Comment (DETACH DELETE)."""
         contenido = comentario["content"] or ""
         preview = contenido[:60] + ("…" if len(contenido) > 60 else "")
         confirm = messagebox.askyesno(
@@ -220,6 +240,7 @@ class ArticleDetailView(ctk.CTkFrame):
         self._render_comments()
 
     def _build_comment_form(self, parent):
+        """Formulario inferior: elegir usuario + texto + botón Comentar."""
         form_container = ctk.CTkFrame(parent, fg_color="transparent")
         form_container.pack(fill="x", padx=5, pady=(0, 20))
 
@@ -231,6 +252,7 @@ class ArticleDetailView(ctk.CTkFrame):
             font=ctk.CTkFont(family="Helvetica", size=13, weight="bold")
         ).pack(side="left", padx=(0, 10))
 
+        # No hay login: se elige qué User firma el comentario
         combo_usuario = make_combo(user_row, width=260)
         try:
             usuarios = consultar("usuarios_listar")
@@ -255,6 +277,7 @@ class ArticleDetailView(ctk.CTkFrame):
         texto_comentario.pack(fill="x", pady=(0, 12))
 
         def enviar():
+            """Crea Comment + relaciones COMMENTED y HAS_COMMENT."""
             contenido = texto_comentario.get("1.0", tk.END).strip()
             user_id = usuarios_by_name.get(combo_usuario.get())
             if not contenido or user_id is None:

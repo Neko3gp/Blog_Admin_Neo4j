@@ -1,5 +1,16 @@
-"""Feed de artículos. Lee con la consulta `articulos_listar` (filtros por categoría y etiqueta).
-Create: botón en main_gui → new_article.py. Update/Delete: article_detail.py."""
+"""Pantalla Inicio: listado de artículos con orden y filtros.
+
+Flujo:
+  main_gui._show_feed()
+    → FeedView.__init__
+    → reload() → consultar("articulos_listar")
+    → dibuja ArticleCard por cada artículo
+    → clic en tarjeta → on_open_article (detalle)
+
+Create/Update/Delete del artículo NO viven aquí:
+  crear  → botón en main_gui → new_article.py
+  editar/borrar → article_detail.py
+"""
 
 import customtkinter as ctk
 
@@ -10,8 +21,11 @@ from widgets.combo import make_combo
 
 
 class FeedView(ctk.CTkFrame):
+    """Lista scrolleable de artículos + barra de filtros."""
+
     def __init__(self, parent, on_open_article):
         super().__init__(parent, fg_color=theme.CONTENT_BG)
+        # Callback que main_gui pasó: al hacer clic abre ArticleDetailView
         self.on_open_article = on_open_article
 
         self._build_toolbar()
@@ -21,9 +35,10 @@ class FeedView(ctk.CTkFrame):
             scrollbar_button_hover_color=theme.SCROLLBAR_HOVER
         )
         self.scroll_area.pack(fill="both", expand=True, padx=16, pady=(0, 16))
-        self.reload()
+        self.reload()  # primera carga desde Neo4j
 
     def _build_toolbar(self):
+        """Combos de orden, categoría y etiqueta (cada cambio dispara reload)."""
         toolbar = ctk.CTkFrame(self, fg_color="transparent")
         toolbar.pack(fill="x", padx=16, pady=(14, 8))
 
@@ -49,11 +64,13 @@ class FeedView(ctk.CTkFrame):
         self._cargar_filtros()
 
     def _cargar_filtros(self):
+        """Llena los combos con categorías y etiquetas existentes en el grafo."""
         try:
             categorias = [c["name"] for c in consultar("categorias_listar")]
             etiquetas = [t["name"] for t in consultar("etiquetas_listar")]
         except Exception:
-            categorias, etiquetas = [], []  # reload() mostrará el error de conexión
+            # Si Neo4j no responde, deja combos vacíos; reload mostrará el error
+            categorias, etiquetas = [], []
 
         self.combo_categoria.configure(values=["Todas"] + categorias)
         self.combo_categoria.set("Todas")
@@ -61,13 +78,18 @@ class FeedView(ctk.CTkFrame):
         self.combo_tag.set("Todos")
 
     def reload(self, _valor=None):
-        """Vuelve a consultar Neo4j con los filtros elegidos y dibuja las tarjetas."""
+        """Consulta Neo4j con los filtros elegidos y redibuja las tarjetas.
+
+        `_valor` lo manda el ComboBox al cambiar; no se usa.
+        """
+        # Limpia tarjetas anteriores
         for widget in self.scroll_area.winfo_children():
             widget.destroy()
 
         categoria = self.combo_categoria.get()
         etiqueta = self.combo_tag.get()
         try:
+            # None = sin filtro (la consulta Cypher lo interpreta así)
             articulos = consultar(
                 "articulos_listar",
                 categoria=None if categoria in ("", "Todas") else categoria,
@@ -77,8 +99,9 @@ class FeedView(ctk.CTkFrame):
             self._render_placeholder(f"No se pudo leer de Neo4j.\n{mensaje_error(e)}")
             return
 
+        # Cypher ya ordena DESC; para "más antiguo" invertimos en Python
         if self.combo_orden.get() == "Más antiguo primero":
-            articulos.reverse()  # la consulta ya viene ordenada del más reciente al más antiguo
+            articulos.reverse()
 
         if not articulos:
             self._render_placeholder("No hay artículos que mostrar todavía.")
@@ -91,6 +114,7 @@ class FeedView(ctk.CTkFrame):
             )
 
     def _render_placeholder(self, mensaje):
+        """Mensaje centrado cuando no hay datos o falló la conexión."""
         ctk.CTkLabel(
             self.scroll_area, text=mensaje,
             font=ctk.CTkFont(family="Segoe UI", size=13, slant="italic"),

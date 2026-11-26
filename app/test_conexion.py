@@ -1,4 +1,11 @@
-"""Prueba mínima: conecta con Neo4j y muestra cuántos artículos y usuarios hay."""
+"""Prueba mínima de que Python puede hablar con Neo4j.
+
+Uso (desde app/):
+  .venv/bin/python test_conexion.py
+
+start.sh la ejecuta al final del arranque.
+Si falla, la GUI tampoco podrá leer datos.
+"""
 
 from db import consultar, verificar_conexion
 

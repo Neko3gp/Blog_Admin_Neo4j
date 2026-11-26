@@ -1,4 +1,8 @@
-"""Usuarios — consultas `usuarios_listar` (leer) y `usuario_crear` (crear)."""
+"""Pantalla Usuarios: listar y registrar.
+
+Consultas: usuarios_listar (leer) y usuario_crear (crear).
+La interfaz NO edita ni elimina usuarios (alcance deliberado del proyecto).
+"""
 
 import tkinter as tk
 from tkinter import messagebox
@@ -9,6 +13,8 @@ from db import consultar, ejecutar, mensaje_error
 
 
 class UsersView(ctk.CTkFrame):
+    """Lista a la izquierda + formulario 'Nuevo usuario' a la derecha."""
+
     def __init__(self, parent):
         super().__init__(parent, fg_color=theme.PAGE_BG)
 
@@ -21,6 +27,7 @@ class UsersView(ctk.CTkFrame):
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
+        # Columna izquierda: listado scrolleable
         list_col = ctk.CTkFrame(body, fg_color="transparent")
         list_col.pack(side="left", fill="both", expand=True)
 
@@ -31,6 +38,7 @@ class UsersView(ctk.CTkFrame):
         )
         self.scroll.pack(fill="both", expand=True)
 
+        # Columna derecha: formulario de alta
         form_col = ctk.CTkFrame(
             body, fg_color=theme.PANEL_BG, border_color=theme.PANEL_BORDER,
             border_width=1, corner_radius=10
@@ -41,6 +49,7 @@ class UsersView(ctk.CTkFrame):
         self.reload()
 
     def _build_form(self, parent):
+        """Campos nombre/email y botón Guardar → usuario_crear."""
         ctk.CTkLabel(
             parent, text="Nuevo usuario",
             font=ctk.CTkFont(family="Helvetica", size=15, weight="bold"),
@@ -67,6 +76,7 @@ class UsersView(ctk.CTkFrame):
                 messagebox.showwarning("Falta información", "Nombre y email son obligatorios.")
                 return
             try:
+                # Si el email ya existe, Neo4j lanza ConstraintError (mensaje_error lo traduce)
                 ejecutar("usuario_crear", name=nombre, email=email)
             except Exception as e:
                 messagebox.showerror("Error", mensaje_error(e))
@@ -84,6 +94,7 @@ class UsersView(ctk.CTkFrame):
         ).pack(pady=20)
 
     def _mensaje(self, texto):
+        """Placeholder cuando la lista está vacía o hubo error de conexión."""
         ctk.CTkLabel(
             self.scroll, text=texto,
             font=ctk.CTkFont(family="Segoe UI", size=12, slant="italic"),
@@ -91,6 +102,7 @@ class UsersView(ctk.CTkFrame):
         ).pack(anchor="w", pady=10)
 
     def reload(self):
+        """Vuelve a pedir usuarios_listar y redibuja las filas."""
         for widget in self.scroll.winfo_children():
             widget.destroy()
 
@@ -109,11 +121,13 @@ class UsersView(ctk.CTkFrame):
             item.pack(fill="x", pady=4)
 
             ctk.CTkLabel(
-                item, text=usuario["name"], font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
+                item, text=usuario["name"],
+                font=ctk.CTkFont(family="Segoe UI", size=13, weight="bold"),
                 text_color=theme.PANEL_FG
             ).pack(fill="x", padx=12, pady=(8, 0), anchor="w")
 
             ctk.CTkLabel(
-                item, text=usuario["email"], font=ctk.CTkFont(family="Segoe UI", size=11),
+                item, text=usuario["email"],
+                font=ctk.CTkFont(family="Segoe UI", size=11),
                 text_color=theme.TEXT_MUTED
             ).pack(fill="x", padx=12, pady=(0, 8), anchor="w")

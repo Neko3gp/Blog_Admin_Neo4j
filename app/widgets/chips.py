@@ -1,4 +1,9 @@
-"""Chips visuales de categoría/tag en las tarjetas del feed."""
+"""Chips (pastillas de color) para categorías y etiquetas en las tarjetas del feed.
+
+kind="tag"      → azul
+kind="category" → naranja
+Solo son decorativos; no filtran al hacer clic.
+"""
 
 import tkinter as tk
 
@@ -7,6 +12,7 @@ CATEGORY_COLORS = {"bg": "#fbe7c6", "fg": "#a3660a"}
 
 
 def make_chip(parent, text, kind="tag"):
+    """Crea un Label pequeño con el estilo de chip según el tipo."""
     colors = TAG_COLORS if kind == "tag" else CATEGORY_COLORS
     return tk.Label(
         parent,

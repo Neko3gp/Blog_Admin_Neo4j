@@ -1,2 +1,5 @@
+# Dependencias Python de la app (se instalan en app/.venv).
+# neo4j         → driver oficial para Bolt (db.py)
+# customtkinter → interfaz de escritorio moderna sobre Tkinter
 neo4j>=5.0
 customtkinter>=5.0.0
