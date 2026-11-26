@@ -1,24 +1,32 @@
-// 02_seed.cypher — Datos de ejemplo. ¡Borra todo el grafo antes de cargarlos!
+// 02_seed.cypher — Datos de ejemplo para demo y pruebas.
+//
+// ¡ATENCIÓN! Empieza borrando TODO el grafo (MATCH ... DETACH DELETE).
+// start.sh solo lo carga si el conteo de nodos es 0.
+// No lo ejecutes a mano si quieres conservar datos reales.
+//
+// Contenido: 3 User, 4 Article, 4 Comment, 2 Category, 4 Tag = 17 nodos.
+// IDs cortos (u1, a1, ...) solo para el seed; los registros nuevos usan UUID.
 
+// Borra nodos y relaciones existentes
 MATCH (n) DETACH DELETE n;
 
 CREATE
-  // Usuarios
+  // ── Usuarios ──
   (u1:User {id: 'u1', name: 'Demo User',    email: 'demo@correo.com'}),
   (u2:User {id: 'u2', name: 'Ana Torres',   email: 'ana@correo.com'}),
   (u3:User {id: 'u3', name: 'Luis Ramírez', email: 'luis@correo.com'}),
 
-  // Categorías
+  // ── Categorías (name + url/slug) ──
   (c1:Category {id: 'c1', name: 'Programación',    url: 'programacion'}),
   (c2:Category {id: 'c2', name: 'Bases de Datos',  url: 'bases-de-datos'}),
 
-  // Etiquetas
+  // ── Etiquetas ──
   (t1:Tag {id: 't1', name: 'neo4j',    url: 'neo4j'}),
   (t2:Tag {id: 't2', name: 'grafos',   url: 'grafos'}),
   (t3:Tag {id: 't3', name: 'python',   url: 'python'}),
   (t4:Tag {id: 't4', name: 'tutorial', url: 'tutorial'}),
 
-  // Artículos
+  // ── Artículos (title, text, date) ──
   (a1:Article {id: 'a1', title: 'Introducción a Neo4j',
                text: 'Neo4j guarda la información como nodos y relaciones, lo que facilita consultar datos muy conectados.',
                date: datetime('2026-11-10T09:00:00')}),
@@ -32,20 +40,20 @@ CREATE
                text: 'Pasos para construir una interfaz de escritorio sencilla con CustomTkinter.',
                date: datetime('2026-11-17T20:00:00')}),
 
-  // Usuario → artículo
+  // ── Relación User → Article (quién escribió) ──
   (u1)-[:WROTE]->(a1),
   (u2)-[:WROTE]->(a2),
   (u2)-[:WROTE]->(a3),
   (u3)-[:WROTE]->(a4),
 
-  // Artículo → categorías
+  // ── Article → Category (N–N) ──
   (a1)-[:IN_CATEGORY]->(c2),
   (a2)-[:IN_CATEGORY]->(c1),
   (a2)-[:IN_CATEGORY]->(c2),
   (a3)-[:IN_CATEGORY]->(c2),
   (a4)-[:IN_CATEGORY]->(c1),
 
-  // Artículo → etiquetas
+  // ── Article → Tag (N–N) ──
   (a1)-[:HAS_TAG]->(t1),
   (a1)-[:HAS_TAG]->(t2),
   (a2)-[:HAS_TAG]->(t1),
@@ -55,7 +63,7 @@ CREATE
   (a4)-[:HAS_TAG]->(t3),
   (a4)-[:HAS_TAG]->(t4),
 
-  // Comentarios: usuario → comentario ← artículo
+  // ── Comentarios: User -[:COMMENTED]-> Comment <-[:HAS_COMMENT]- Article ──
   (u2)-[:COMMENTED]->(:Comment {id: 'm1', content: 'Muy buena introducción, gracias.',
                                 date: datetime('2026-11-10T12:00:00')})<-[:HAS_COMMENT]-(a1),
   (u3)-[:COMMENTED]->(:Comment {id: 'm2', content: '¿Se puede usar con Docker?',
