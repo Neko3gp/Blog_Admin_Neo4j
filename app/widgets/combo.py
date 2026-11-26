@@ -1,0 +1,16 @@
+"""ComboBox de solo lectura con el estilo de la aplicación."""
+
+import customtkinter as ctk
+
+import theme
+
+
+def make_combo(parent, width=140, **kwargs):
+    return ctk.CTkComboBox(
+        parent, state="readonly", width=width,
+        fg_color=theme.ENTRY_BG, border_color=theme.ENTRY_BORDER,
+        text_color=theme.ENTRY_FG, dropdown_fg_color=theme.DROPDOWN_BG,
+        dropdown_text_color=theme.DROPDOWN_TEXT,
+        button_color=theme.ENTRY_BORDER, button_hover_color=theme.BTN_SECONDARY_HOVER,
+        **kwargs
+    )

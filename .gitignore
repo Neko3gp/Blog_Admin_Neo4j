@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.env
+
+# Python local (instalación portable)
+.python/
+.tools/
+
+# Editor / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
